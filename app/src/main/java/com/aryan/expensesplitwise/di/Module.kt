@@ -22,7 +22,9 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "expense_splitter_db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

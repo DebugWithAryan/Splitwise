@@ -13,7 +13,7 @@ import com.aryan.expensesplitwise.data.local.entity.MessageEntity
 
 @Database(
     entities = [ExpenseEntity::class, MessageEntity::class, FriendEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
