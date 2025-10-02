@@ -9,6 +9,7 @@ import com.aryan.expensesplitwise.data.local.entity.MessageEntity
 import com.aryan.expensesplitwise.domain.model.Expense
 import com.aryan.expensesplitwise.domain.model.Friend
 import com.aryan.expensesplitwise.domain.model.Message
+import com.aryan.expensesplitwise.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
@@ -70,11 +71,29 @@ class ExpenseRepository @Inject constructor(
     }
 
     private fun ExpenseEntity.toDomain() = Expense(
-        id, description, amount, paidBy, splitBetween, timestamp, detectedFromMessage
+        id = id,
+        description = description,
+        amount = amount,
+        paidBy = paidBy,
+        splitBetween = splitBetween,
+        timestamp = timestamp,
+        detectedFromMessage = detectedFromMessage,
+        transactionType = try {
+            TransactionType.valueOf(transactionType)
+        } catch (e: Exception) {
+            TransactionType.OUTGOING
+        }
     )
 
     private fun Expense.toEntity() = ExpenseEntity(
-        id, description, amount, paidBy, splitBetween, timestamp, detectedFromMessage
+        id = id,
+        description = description,
+        amount = amount,
+        paidBy = paidBy,
+        splitBetween = splitBetween,
+        timestamp = timestamp,
+        detectedFromMessage = detectedFromMessage,
+        transactionType = transactionType.name
     )
 
     private fun MessageEntity.toDomain() = Message(id, text, processed, timestamp)

@@ -1,6 +1,5 @@
 package com.aryan.expensesplitwise.data.local.entity
 
-
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
@@ -18,7 +17,8 @@ data class ExpenseEntity(
     val paidBy: String,
     val splitBetween: List<String>,
     val timestamp: Long,
-    val detectedFromMessage: Boolean
+    val detectedFromMessage: Boolean,
+    val transactionType: String = "OUTGOING" // "OUTGOING" or "INCOMING"
 )
 
 @Entity(tableName = "messages")

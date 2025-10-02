@@ -1,9 +1,8 @@
 package com.aryan.expensesplitwise.domain.usecase
 
 import com.aryan.expensesplitwise.domain.model.Expense
-import java.text.SimpleDateFormat
+import com.aryan.expensesplitwise.domain.model.TransactionType
 import java.util.Calendar
-import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 
@@ -16,11 +15,14 @@ class ParseMessageUseCase @Inject constructor() {
 
     fun execute(text: String, friends: List<String>, messageTimestamp: Long = System.currentTimeMillis()): ParseResult {
         val amount = extractAmount(text) ?: return ParseResult(null, false)
-        val paidBy = detectPayer(text, friends)
-        val description = extractDescription(text)
-        val splitBetween = detectSplitBetween(text, friends, paidBy)
 
-        // Extract payment date from message, fallback to message timestamp
+        // Detect transaction type (incoming vs outgoing)
+        val transactionType = detectTransactionType(text)
+
+        val paidBy = detectPayer(text, friends, transactionType)
+        val description = extractDescription(text, transactionType)
+        val splitBetween = detectSplitBetween(text, friends, paidBy, transactionType)
+
         val paymentTimestamp = extractPaymentDate(text, messageTimestamp)
 
         val expense = Expense(
@@ -30,16 +32,49 @@ class ParseMessageUseCase @Inject constructor() {
             paidBy = paidBy,
             splitBetween = splitBetween,
             timestamp = paymentTimestamp,
-            detectedFromMessage = true
+            detectedFromMessage = true,
+            transactionType = transactionType
         )
 
         return ParseResult(expense, true)
     }
 
+    private fun detectTransactionType(text: String): TransactionType {
+        val lowerText = text.lowercase()
+
+        // Check for incoming/credited keywords with priority
+        val incomingKeywords = listOf(
+            "credited to", "credited in", "credited",
+            "received from", "received in", "received",
+            "refund", "refunded", "cashback",
+            "you received", "got money", "incoming",
+            "deposited", "deposit to"
+        )
+
+        // Check for outgoing/debited keywords
+        val outgoingKeywords = listOf(
+            "debited from", "debited",
+            "paid to", "paid for", "paid",
+            "sent to", "sent",
+            "transferred to", "transferred",
+            "you paid", "you sent",
+            "purchase", "withdrawn", "spent"
+        )
+
+        // Count matches for each type
+        val incomingMatches = incomingKeywords.count { lowerText.contains(it) }
+        val outgoingMatches = outgoingKeywords.count { lowerText.contains(it) }
+
+        // Prioritize incoming if it has more matches or equal matches
+        return when {
+            incomingMatches > outgoingMatches -> TransactionType.INCOMING
+            incomingMatches > 0 && outgoingMatches == 0 -> TransactionType.INCOMING
+            else -> TransactionType.OUTGOING
+        }
+    }
+
     private fun extractPaymentDate(text: String, fallbackTimestamp: Long): Long {
         try {
-            val lowerText = text.lowercase()
-
             // Pattern 1: "on 25 Dec 2024" or "on 25-Dec-2024"
             val datePattern1 = """on\s+(\d{1,2})[- ]([A-Za-z]{3})[- ](\d{4})""".toRegex(RegexOption.IGNORE_CASE)
             datePattern1.find(text)?.let { match ->
@@ -138,7 +173,7 @@ class ParseMessageUseCase @Inject constructor() {
             return it.groupValues[1].replace(",", "").toDoubleOrNull()
         }
 
-        val amountPattern = """(?:paid|debited|sent|transferred)\s+(?:Rs\.?|₹|INR)?\s*(\d+(?:,\d+)*(?:\.\d{1,2})?)""".toRegex(RegexOption.IGNORE_CASE)
+        val amountPattern = """(?:paid|debited|sent|transferred|credited|received)\s+(?:Rs\.?|₹|INR)?\s*(\d+(?:,\d+)*(?:\.\d{1,2})?)""".toRegex(RegexOption.IGNORE_CASE)
         amountPattern.find(text)?.let {
             return it.groupValues[1].replace(",", "").toDoubleOrNull()
         }
@@ -146,18 +181,31 @@ class ParseMessageUseCase @Inject constructor() {
         return null
     }
 
-    private fun extractDescription(text: String): String {
+    private fun extractDescription(text: String, transactionType: TransactionType): String {
         val lowerText = text.lowercase()
 
-        val toPattern = """(?:to|paid to|sent to)\s+([A-Za-z\s]+?)(?:\s+(?:Rs|INR|₹|for|on|via|using)|$)""".toRegex(RegexOption.IGNORE_CASE)
-        toPattern.find(text)?.let {
-            val recipient = it.groupValues[1].trim()
-            if (recipient.length > 2 && !recipient.contains("account", ignoreCase = true)) {
-                return recipient
+        // Extract merchant/recipient name from UPI patterns
+        val toFromPattern = if (transactionType == TransactionType.INCOMING) {
+            """(?:from|received from)\s+([A-Za-z\s]+?)(?:\s+(?:Rs|INR|₹|for|on|via|using)|$)""".toRegex(RegexOption.IGNORE_CASE)
+        } else {
+            """(?:to|paid to|sent to)\s+([A-Za-z\s]+?)(?:\s+(?:Rs|INR|₹|for|on|via|using)|$)""".toRegex(RegexOption.IGNORE_CASE)
+        }
+
+        toFromPattern.find(text)?.let {
+            val name = it.groupValues[1].trim()
+            if (name.length > 2 && !name.contains("account", ignoreCase = true)) {
+                return if (transactionType == TransactionType.INCOMING) {
+                    "Received from $name"
+                } else {
+                    "Paid to $name"
+                }
             }
         }
 
-        return when {
+        // Category-based description with proper prefix
+        val prefix = if (transactionType == TransactionType.INCOMING) "Received: " else ""
+
+        return prefix + when {
             lowerText.contains("movie") || lowerText.contains("ticket") -> "Movie Tickets"
             lowerText.contains("dinner") || lowerText.contains("restaurant") -> "Dinner"
             lowerText.contains("lunch") -> "Lunch"
@@ -179,19 +227,38 @@ class ParseMessageUseCase @Inject constructor() {
             lowerText.contains("flight") || lowerText.contains("airline") -> "Flight"
             lowerText.contains("medicine") || lowerText.contains("pharmacy") -> "Medicine"
             lowerText.contains("recharge") -> "Recharge"
-            lowerText.contains("upi") -> "UPI Payment"
-            else -> "Payment"
+            lowerText.contains("cashback") -> "Cashback"
+            lowerText.contains("refund") -> "Refund"
+            lowerText.contains("salary") -> "Salary"
+            lowerText.contains("upi") -> if (transactionType == TransactionType.INCOMING) "UPI Received" else "UPI Payment"
+            else -> if (transactionType == TransactionType.INCOMING) "Money Received" else "Payment"
         }
     }
 
-    private fun detectPayer(text: String, friends: List<String>): String {
+    private fun detectPayer(text: String, friends: List<String>, transactionType: TransactionType): String {
         val lowerText = text.lowercase()
 
+        // For INCOMING transactions, someone else paid YOU
+        if (transactionType == TransactionType.INCOMING) {
+            // Check for explicit sender names
+            friends.forEach { friend ->
+                if (lowerText.contains("from ${friend.lowercase()}") ||
+                    lowerText.contains("${friend.lowercase()} sent") ||
+                    lowerText.contains("${friend.lowercase()} paid")) {
+                    return friend
+                }
+            }
+            // Default: unknown sender for incoming (they paid you)
+            return "Unknown"
+        }
+
+        // For OUTGOING transactions, YOU or a friend paid
         if (lowerText.contains("debited") ||
             lowerText.contains("you sent") ||
             lowerText.contains("you paid") ||
             lowerText.contains("your payment") ||
-            lowerText.contains("your account")) {
+            lowerText.contains("your account") ||
+            lowerText.contains("withdrawn from")) {
             return "Me"
         }
 
@@ -209,26 +276,41 @@ class ParseMessageUseCase @Inject constructor() {
         return "Me"
     }
 
-    private fun detectSplitBetween(text: String, friends: List<String>, paidBy: String): List<String> {
+    private fun detectSplitBetween(text: String, friends: List<String>, paidBy: String, transactionType: TransactionType): List<String> {
         val lowerText = text.lowercase()
         val splitBetween = mutableSetOf<String>()
 
-        if (lowerText.contains("all of us") ||
-            lowerText.contains("everyone") ||
-            lowerText.contains("split between all")) {
-            return friends
+        // For INCOMING money, only YOU benefit (receive the money)
+        if (transactionType == TransactionType.INCOMING) {
+            splitBetween.add("Me")
+            return splitBetween.toList()
         }
 
+        // For OUTGOING payments - detect who to split with
+        if (lowerText.contains("all of us") ||
+            lowerText.contains("everyone") ||
+            lowerText.contains("split between all") ||
+            lowerText.contains("split equally")) {
+            splitBetween.add("Me")
+            splitBetween.addAll(friends)
+            return splitBetween.toList()
+        }
+
+        // Check for specific friend mentions
         friends.forEach { friend ->
             if (lowerText.contains(friend.lowercase())) {
                 splitBetween.add(friend)
             }
         }
 
-        if (lowerText.contains("me and") || lowerText.contains("for me and")) {
+        // Check if payer should be included
+        if (lowerText.contains("me and") ||
+            lowerText.contains("for me and") ||
+            lowerText.contains("myself and")) {
             splitBetween.add(paidBy)
         }
 
+        // If no one detected, default to payer only
         if (splitBetween.isEmpty()) {
             splitBetween.add(paidBy)
         }

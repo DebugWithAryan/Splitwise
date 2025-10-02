@@ -54,24 +54,28 @@ class ExpenseViewModel @Inject constructor(
     private val _isScanningSms = MutableStateFlow(false)
     val isScanningSms: StateFlow<Boolean> = _isScanningSms.asStateFlow()
 
-    fun addMessage(text: String) {
+    fun addMessage(text: String, timestamp: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
             val message = Message(
                 id = UUID.randomUUID().toString(),
                 text = text,
                 processed = false,
-                timestamp = System.currentTimeMillis()
+                timestamp = timestamp
             )
             repository.addMessage(message)
 
             val friendNames = friends.value.map { it.name }
-            val parseResult = parseMessageUseCase.execute(text, friendNames, message.timestamp)
+            val parseResult = parseMessageUseCase.execute(text, friendNames, timestamp)
 
             if (parseResult.success && parseResult.expense != null) {
                 repository.addExpense(parseResult.expense)
                 repository.updateMessageProcessed(message.id, true)
             }
         }
+    }
+
+    fun processIncomingSms(smsBody: String, smsTimestamp: Long) {
+        addMessage(smsBody, smsTimestamp)
     }
 
     fun scanHistoricalSms(daysBack: Int = 30) {

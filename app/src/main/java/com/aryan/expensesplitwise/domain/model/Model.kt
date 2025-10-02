@@ -1,5 +1,9 @@
 package com.aryan.expensesplitwise.domain.model
 
+enum class TransactionType {
+    OUTGOING,  // Debited/Paid by you
+    INCOMING   // Credited/Received by you
+}
 
 data class Expense(
     val id: String,
@@ -8,7 +12,8 @@ data class Expense(
     val paidBy: String,
     val splitBetween: List<String>,
     val timestamp: Long,
-    val detectedFromMessage: Boolean
+    val detectedFromMessage: Boolean,
+    val transactionType: TransactionType = TransactionType.OUTGOING
 )
 
 data class Message(
@@ -34,4 +39,3 @@ data class Balance(
     val person: String,
     val amount: Double
 )
-
