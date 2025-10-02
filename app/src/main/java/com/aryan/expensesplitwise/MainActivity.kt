@@ -35,6 +35,7 @@ import com.aryan.expensesplitwise.domain.model.Expense
 import com.aryan.expensesplitwise.domain.model.Friend
 import com.aryan.expensesplitwise.domain.model.Message
 import com.aryan.expensesplitwise.domain.model.Settlement
+import com.aryan.expensesplitwise.domain.model.TransactionType
 import com.aryan.expensesplitwise.presentation.ExpenseViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
@@ -281,6 +282,19 @@ class MainActivity : ComponentActivity() {
         var showDeleteDialog by remember { mutableStateOf(false) }
         val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
+        // Determine colors based on transaction type
+        val accentColor = if (expense.transactionType == TransactionType.INCOMING) {
+            AccentGreen
+        } else {
+            AccentCyan
+        }
+
+        val transactionIcon = if (expense.transactionType == TransactionType.INCOMING) {
+            Icons.Default.CallReceived
+        } else {
+            Icons.Default.CallMade
+        }
+
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -299,6 +313,13 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                transactionIcon,
+                                contentDescription = null,
+                                tint = accentColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 expense.description,
                                 style = MaterialTheme.typography.titleMedium,
@@ -327,11 +348,17 @@ class MainActivity : ComponentActivity() {
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
                         )
+                        Text(
+                            if (expense.transactionType == TransactionType.INCOMING) "Incoming" else "Outgoing",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = accentColor,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                     Text(
                         "₹${String.format("%.2f", expense.amount)}",
                         style = MaterialTheme.typography.titleLarge,
-                        color = AccentGreen,
+                        color = accentColor,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -351,7 +378,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Column {
                                 Text(
-                                    "Paid by",
+                                    if (expense.transactionType == TransactionType.INCOMING) "Received from" else "Paid by",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = TextSecondary
                                 )
@@ -381,7 +408,7 @@ class MainActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
-                            "Split between",
+                            if (expense.transactionType == TransactionType.INCOMING) "Beneficiaries" else "Split between",
                             style = MaterialTheme.typography.labelSmall,
                             color = TextSecondary
                         )
@@ -396,7 +423,7 @@ class MainActivity : ComponentActivity() {
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(
                                             Brush.horizontalGradient(
-                                                listOf(AccentPurple.copy(alpha = 0.3f), AccentCyan.copy(alpha = 0.3f))
+                                                listOf(accentColor.copy(alpha = 0.3f), AccentCyan.copy(alpha = 0.3f))
                                             )
                                         )
                                         .padding(horizontal = 12.dp, vertical = 6.dp)
