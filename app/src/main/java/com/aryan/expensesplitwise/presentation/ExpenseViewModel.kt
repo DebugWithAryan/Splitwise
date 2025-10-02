@@ -64,9 +64,8 @@ class ExpenseViewModel @Inject constructor(
             )
             repository.addMessage(message)
 
-            // Try to parse the message
             val friendNames = friends.value.map { it.name }
-            val parseResult = parseMessageUseCase.execute(text, friendNames)
+            val parseResult = parseMessageUseCase.execute(text, friendNames, message.timestamp)
 
             if (parseResult.success && parseResult.expense != null) {
                 repository.addExpense(parseResult.expense)
@@ -91,8 +90,7 @@ class ExpenseViewModel @Inject constructor(
                     )
                     repository.addMessage(message)
 
-                    // Try to parse
-                    val parseResult = parseMessageUseCase.execute(sms.body, friendNames)
+                    val parseResult = parseMessageUseCase.execute(sms.body, friendNames, sms.date)
                     if (parseResult.success && parseResult.expense != null) {
                         repository.addExpense(parseResult.expense)
                         repository.updateMessageProcessed(message.id, true)
@@ -116,6 +114,14 @@ class ExpenseViewModel @Inject constructor(
                 detectedFromMessage = false
             )
             repository.addExpense(expense)
+        }
+    }
+
+    fun updateExpenseSplit(expense: Expense, newSplitBetween: List<String>) {
+        viewModelScope.launch {
+            val updatedExpense = expense.copy(splitBetween = newSplitBetween)
+            repository.deleteExpense(expense)
+            repository.addExpense(updatedExpense)
         }
     }
 

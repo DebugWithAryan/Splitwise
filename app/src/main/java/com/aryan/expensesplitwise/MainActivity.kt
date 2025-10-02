@@ -8,72 +8,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.Message
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Message
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale
 import androidx.core.content.ContextCompat
@@ -83,11 +36,9 @@ import com.aryan.expensesplitwise.domain.model.Friend
 import com.aryan.expensesplitwise.domain.model.Message
 import com.aryan.expensesplitwise.domain.model.Settlement
 import com.aryan.expensesplitwise.presentation.ExpenseViewModel
-import com.aryan.expensesplitwise.ui.theme.ExpenseSplitwiseTheme
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -113,10 +64,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
         checkSmsPermission()
-
-
         setContent {
             ExpenseSplitterApp()
         }
@@ -127,12 +75,9 @@ class MainActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.READ_SMS
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                // Permission already granted
-            }
+            ) == PackageManager.PERMISSION_GRANTED -> {}
 
             shouldShowRequestPermissionRationale(Manifest.permission.READ_SMS) -> {
-                // Show explanation
                 Toast.makeText(
                     this,
                     "SMS permission needed to automatically detect payment expenses",
@@ -142,13 +87,24 @@ class MainActivity : ComponentActivity() {
             }
 
             else -> {
-                // Request permission directly
                 requestSmsPermission.launch(Manifest.permission.READ_SMS)
             }
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    // Dark Theme Colors
+    private val DarkBackground = Color(0xFF0A0E27)
+    private val DarkSurface = Color(0xFF151B3D)
+    private val AccentPurple = Color(0xFF7C4DFF)
+    private val AccentCyan = Color(0xFF00E5FF)
+    private val AccentGreen = Color(0xFF00E676)
+    private val AccentPink = Color(0xFFFF4081)
+    private val TextPrimary = Color(0xFFE8EAED)
+    private val TextSecondary = Color(0xFFB0B3B8)
+
+
+
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
     @Composable
     fun ExpenseSplitterApp(viewModel: ExpenseViewModel = hiltViewModel()) {
         var selectedTab by remember { mutableStateOf(0) }
@@ -156,55 +112,104 @@ class MainActivity : ComponentActivity() {
 
         MaterialTheme(
             colorScheme = darkColorScheme(
-                primary = Color(0xFF00C853),
-                secondary = Color(0xFF64DD17),
-                background = Color(0xFF121212),
-                surface = Color(0xFF1E1E1E)
+                primary = AccentPurple,
+                secondary = AccentCyan,
+                tertiary = AccentGreen,
+                background = DarkBackground,
+                surface = DarkSurface,
+                onPrimary = Color.White,
+                onSecondary = Color.White,
+                onBackground = TextPrimary,
+                onSurface = TextPrimary
             )
         ) {
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text("Smart Expense Splitter") },
+                        title = {
+                            Text(
+                                "Smart Expense Splitter",
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            titleContentColor = Color.White
+                            containerColor = DarkSurface,
+                            titleContentColor = AccentPurple
                         )
                     )
                 },
                 bottomBar = {
-                    NavigationBar {
+                    NavigationBar(
+                        containerColor = DarkSurface,
+                        contentColor = AccentPurple
+                    ) {
                         tabs.forEachIndexed { index, title ->
                             NavigationBarItem(
                                 icon = {
-                                    Icon(
-                                        when (index) {
+                                    AnimatedIcon(
+                                        isSelected = selectedTab == index,
+                                        icon = when (index) {
                                             0 -> Icons.Default.Receipt
                                             1 -> Icons.Default.Message
                                             2 -> Icons.Default.AccountBalance
                                             else -> Icons.Default.People
-                                        },
-                                        contentDescription = title
+                                        }
                                     )
                                 },
                                 label = { Text(title) },
                                 selected = selectedTab == index,
-                                onClick = { selectedTab = index }
+                                onClick = { selectedTab = index },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = AccentPurple,
+                                    selectedTextColor = AccentPurple,
+                                    unselectedIconColor = TextSecondary,
+                                    unselectedTextColor = TextSecondary,
+                                    indicatorColor = AccentPurple.copy(alpha = 0.2f)
+                                )
                             )
                         }
                     }
-                }
+                },
+                containerColor = DarkBackground
             ) { padding ->
-                Box(modifier = Modifier.padding(padding)) {
-                    when (selectedTab) {
-                        0 -> ExpensesScreen(viewModel)
-                        1 -> MessagesScreen(viewModel)
-                        2 -> BalancesScreen(viewModel)
-                        3 -> FriendsScreen(viewModel)
+                Box(
+                    modifier = Modifier
+                        .padding(padding)
+                        .fillMaxSize()
+                ) {
+                    AnimatedContent(
+                        targetState = selectedTab,
+                        transitionSpec = {
+                            slideInHorizontally { it } + fadeIn() with
+                                    slideOutHorizontally { -it } + fadeOut()
+                        },
+                        label = "tab_animation"
+                    ) { tab ->
+                        when (tab) {
+                            0 -> ExpensesScreen(viewModel)
+                            1 -> MessagesScreen(viewModel)
+                            2 -> BalancesScreen(viewModel)
+                            3 -> FriendsScreen(viewModel)
+                        }
                     }
                 }
             }
         }
+    }
+
+    @Composable
+    fun AnimatedIcon(isSelected: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+        val scale by animateFloatAsState(
+            targetValue = if (isSelected) 1.2f else 1f,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+            label = "icon_scale"
+        )
+
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.scale(scale)
+        )
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -216,41 +221,25 @@ class MainActivity : ComponentActivity() {
 
         Box(modifier = Modifier.fillMaxSize()) {
             if (expenses.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        Icons.Default.Receipt,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "No expenses yet",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.Gray
-                    )
-                    Text(
-                        "Add an expense or send a message",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                }
+                EmptyState(
+                    icon = Icons.Default.Receipt,
+                    title = "No expenses yet",
+                    subtitle = "Add an expense or send a message"
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(expenses, key = { it.id }) { expense ->
-                        ExpenseCard(
+                        AnimatedExpenseCard(
                             expense = expense,
-                            onDelete = { viewModel.deleteExpense(expense) }
+                            friends = friends.map { it.name },
+                            onDelete = { viewModel.deleteExpense(expense) },
+                            onUpdateSplit = { newSplit ->
+                                viewModel.updateExpenseSplit(expense, newSplit)
+                            }
                         )
                     }
                 }
@@ -260,7 +249,9 @@ class MainActivity : ComponentActivity() {
                 onClick = { showAddDialog = true },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                containerColor = AccentPurple,
+                contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Expense")
             }
@@ -278,18 +269,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun ExpenseCard(expense: Expense, onDelete: () -> Unit) {
-        val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+    fun AnimatedExpenseCard(
+        expense: Expense,
+        friends: List<String>,
+        onDelete: () -> Unit,
+        onUpdateSplit: (List<String>) -> Unit
+    ) {
+        var isExpanded by remember { mutableStateOf(false) }
+        var showEditDialog by remember { mutableStateOf(false) }
         var showDeleteDialog by remember { mutableStateOf(false) }
+        val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = DarkSurface
             ),
-            onClick = { showDeleteDialog = true }
+            shape = RoundedCornerShape(16.dp),
+            onClick = { isExpanded = !isExpanded }
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -298,73 +298,297 @@ class MainActivity : ComponentActivity() {
                     verticalAlignment = Alignment.Top
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            expense.description,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                expense.description,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            if (expense.detectedFromMessage) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(AccentCyan.copy(alpha = 0.2f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        "AUTO",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = AccentCyan,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                         Text(
                             dateFormat.format(Date(expense.timestamp)),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = TextSecondary
                         )
                     }
                     Text(
-                        "$${String.format("%.2f", expense.amount)}",
+                        "₹${String.format("%.2f", expense.amount)}",
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = AccentGreen,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
                 ) {
-                    Column {
-                        Text(
-                            "Paid by: ${expense.paidBy}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            "Split: ${expense.splitBetween.joinToString(", ")}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
-                        )
-                    }
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        Divider(color = TextSecondary.copy(alpha = 0.3f))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    if (expense.detectedFromMessage) {
-                        Icon(
-                            Icons.Default.AutoAwesome,
-                            contentDescription = "Auto-detected",
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(20.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    "Paid by",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                                Text(
+                                    expense.paidBy,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    "Per person",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                                Text(
+                                    "₹${String.format("%.2f", expense.amount / expense.splitBetween.size)}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = AccentCyan,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            "Split between",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondary
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            expense.splitBetween.forEach { person ->
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                listOf(AccentPurple.copy(alpha = 0.3f), AccentCyan.copy(alpha = 0.3f))
+                                            )
+                                        )
+                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        person,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextPrimary
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { showEditDialog = true },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = AccentCyan
+                                )
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Edit Split")
+                            }
+
+                            OutlinedButton(
+                                onClick = { showDeleteDialog = true },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = AccentPink
+                                )
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Delete")
+                            }
+                        }
                     }
                 }
             }
         }
 
+        if (showEditDialog) {
+            EditSplitDialog(
+                expense = expense,
+                friends = friends,
+                onDismiss = { showEditDialog = false },
+                onConfirm = { newSplit ->
+                    onUpdateSplit(newSplit)
+                    showEditDialog = false
+                }
+            )
+        }
+
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Expense?") },
-                text = { Text("Are you sure you want to delete this expense?") },
+                title = { Text("Delete Expense?", color = TextPrimary) },
+                text = { Text("Are you sure you want to delete this expense?", color = TextSecondary) },
                 confirmButton = {
                     TextButton(onClick = {
                         onDelete()
                         showDeleteDialog = false
                     }) {
-                        Text("Delete", color = Color.Red)
+                        Text("Delete", color = AccentPink)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
+                        Text("Cancel", color = TextSecondary)
+                    }
+                },
+                containerColor = DarkSurface
+            )
+        }
+    }
+
+    @Composable
+    fun EditSplitDialog(
+        expense: Expense,
+        friends: List<String>,
+        onDismiss: () -> Unit,
+        onConfirm: (List<String>) -> Unit
+    ) {
+        var selectedFriends by remember { mutableStateOf(expense.splitBetween.toSet()) }
+
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Edit Split", color = TextPrimary) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Select who to split with:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                    friends.forEach { friend ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = selectedFriends.contains(friend),
+                                onCheckedChange = { checked ->
+                                    selectedFriends = if (checked) {
+                                        selectedFriends + friend
+                                    } else {
+                                        selectedFriends - friend
+                                    }
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = AccentPurple,
+                                    uncheckedColor = TextSecondary
+                                )
+                            )
+                            Text(friend, color = TextPrimary)
+                        }
                     }
                 }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { onConfirm(selectedFriends.toList()) },
+                    enabled = selectedFriends.isNotEmpty(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentPurple
+                    )
+                ) {
+                    Text("Update")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = DarkSurface
+        )
+    }
+
+    @Composable
+    fun EmptyState(
+        icon: androidx.compose.ui.graphics.vector.ImageVector,
+        title: String,
+        subtitle: String
+    ) {
+        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+        val scale by infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "icon_pulse"
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(80.dp)
+                    .scale(scale),
+                tint = TextSecondary.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                title,
+                style = MaterialTheme.typography.headlineSmall,
+                color = TextSecondary,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary.copy(alpha = 0.7f)
             )
         }
     }
@@ -384,17 +608,24 @@ class MainActivity : ComponentActivity() {
 
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Add Expense") },
+            title = { Text("Add Expense", color = TextPrimary) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
                         label = { Text("Description") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentPurple,
+                            focusedLabelColor = AccentPurple,
+                            cursorColor = AccentPurple,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        )
                     )
 
                     OutlinedTextField(
@@ -402,7 +633,14 @@ class MainActivity : ComponentActivity() {
                         onValueChange = { amount = it },
                         label = { Text("Amount") },
                         modifier = Modifier.fillMaxWidth(),
-                        prefix = { Text("$") }
+                        prefix = { Text("₹", color = AccentGreen) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentPurple,
+                            focusedLabelColor = AccentPurple,
+                            cursorColor = AccentPurple,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        )
                     )
 
                     ExposedDropdownMenuBox(
@@ -419,16 +657,23 @@ class MainActivity : ComponentActivity() {
                                 .menuAnchor(),
                             trailingIcon = {
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                            }
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentPurple,
+                                focusedLabelColor = AccentPurple,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            )
                         )
 
                         ExposedDropdownMenu(
                             expanded = expanded,
-                            onDismissRequest = { expanded = false }
+                            onDismissRequest = { expanded = false },
+                            modifier = Modifier.background(DarkSurface)
                         ) {
                             friends.forEach { friend ->
                                 DropdownMenuItem(
-                                    text = { Text(friend) },
+                                    text = { Text(friend, color = TextPrimary) },
                                     onClick = {
                                         paidBy = friend
                                         expanded = false
@@ -438,7 +683,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    Text("Split between:", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        "Split between:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary
+                    )
                     friends.forEach { friend ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -452,15 +701,19 @@ class MainActivity : ComponentActivity() {
                                     } else {
                                         selectedFriends - friend
                                     }
-                                }
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = AccentPurple,
+                                    uncheckedColor = TextSecondary
+                                )
                             )
-                            Text(friend)
+                            Text(friend, color = TextPrimary)
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         val amountValue = amount.toDoubleOrNull()
                         if (description.isNotBlank() && amountValue != null &&
@@ -471,16 +724,20 @@ class MainActivity : ComponentActivity() {
                     },
                     enabled = description.isNotBlank() &&
                             amount.toDoubleOrNull() != null &&
-                            selectedFriends.isNotEmpty()
+                            selectedFriends.isNotEmpty(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentPurple
+                    )
                 ) {
                     Text("Add")
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                    Text("Cancel", color = TextSecondary)
                 }
-            }
+            },
+            containerColor = DarkSurface
         )
     }
 
@@ -503,12 +760,16 @@ class MainActivity : ComponentActivity() {
                 Text(
                     "Message Parser",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
                 )
 
                 FilledIconButton(
                     onClick = { viewModel.scanHistoricalSms(30) },
-                    enabled = !isScanning
+                    enabled = !isScanning,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = AccentPurple
+                    )
                 ) {
                     if (isScanning) {
                         CircularProgressIndicator(
@@ -521,38 +782,39 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                    containerColor = DarkSurface
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "💡 Try these examples:",
+                        "Try these examples:",
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = AccentCyan
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    listOf(
+                        "I paid ₹50 for pizza for everyone",
+                        "Spent 120 on dinner with John and Sarah",
+                        "₹45 for movie tickets"
+                    ).forEach { example ->
+                        Text(
+                            "• $example",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "• I paid \$50 for pizza for everyone",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        "• Spent 120 on dinner with John and Sarah",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        "• \$45 for movie tickets",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Tap 🔍 to scan payment SMS from last 30 days",
+                        "Tap scan button to find payment SMS from last 30 days",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = AccentGreen,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -568,9 +830,16 @@ class MainActivity : ComponentActivity() {
                 OutlinedTextField(
                     value = messageText,
                     onValueChange = { messageText = it },
-                    placeholder = { Text("Type a message...") },
+                    placeholder = { Text("Type a message...", color = TextSecondary) },
                     modifier = Modifier.weight(1f),
-                    maxLines = 3
+                    maxLines = 3,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AccentPurple,
+                        cursorColor = AccentPurple,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 )
 
                 FilledIconButton(
@@ -580,7 +849,10 @@ class MainActivity : ComponentActivity() {
                             messageText = ""
                         }
                     },
-                    enabled = messageText.isNotBlank()
+                    enabled = messageText.isNotBlank(),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = AccentPurple
+                    )
                 ) {
                     Icon(Icons.Default.Send, contentDescription = "Send")
                 }
@@ -589,27 +861,14 @@ class MainActivity : ComponentActivity() {
             Spacer(modifier = Modifier.height(16.dp))
 
             if (messages.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        Icons.Default.Message,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "No messages yet",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.Gray
-                    )
-                }
+                EmptyState(
+                    icon = Icons.Default.Message,
+                    title = "No messages yet",
+                    subtitle = "Send a message to test the parser"
+                )
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(messages, key = { it.id }) { message ->
                         MessageCard(message)
@@ -627,10 +886,11 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
                 containerColor = if (message.processed)
-                    Color(0xFF1B5E20)
+                    AccentGreen.copy(alpha = 0.2f)
                 else
-                    MaterialTheme.colorScheme.surface
-            )
+                    DarkSurface
+            ),
+            shape = RoundedCornerShape(16.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -642,12 +902,13 @@ class MainActivity : ComponentActivity() {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         message.text,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextPrimary
                     )
                     Text(
                         dateFormat.format(Date(message.timestamp)),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = TextSecondary
                     )
                 }
                 if (message.processed) {
@@ -655,19 +916,19 @@ class MainActivity : ComponentActivity() {
                         Icon(
                             Icons.Default.CheckCircle,
                             contentDescription = "Processed",
-                            tint = Color(0xFF4CAF50)
+                            tint = AccentGreen
                         )
                         Text(
                             "Processed",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF4CAF50)
+                            color = AccentGreen
                         )
                     }
                 } else {
                     Icon(
                         Icons.Default.Schedule,
                         contentDescription = "Pending",
-                        tint = Color.Gray
+                        tint = TextSecondary
                     )
                 }
             }
@@ -689,45 +950,30 @@ class MainActivity : ComponentActivity() {
                 "Balances",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
+                color = TextPrimary,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             if (expenses.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        Icons.Default.AccountBalance,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "No balances to show",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.Gray
-                    )
-                    Text(
-                        "Add expenses to see balances",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                }
+                EmptyState(
+                    icon = Icons.Default.AccountBalance,
+                    title = "No balances to show",
+                    subtitle = "Add expenses to see balances"
+                )
             } else {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+                        containerColor = DarkSurface
+                    ),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             "Current Balances",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
+                            color = AccentPurple,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
 
@@ -741,34 +987,48 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Default.Person,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp)
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.linearGradient(
+                                                    listOf(AccentPurple, AccentCyan)
+                                                )
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            balance.person.first().toString(),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                     Text(
                                         balance.person,
-                                        style = MaterialTheme.typography.bodyLarge
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = TextPrimary
                                     )
                                 }
 
                                 Text(
                                     if (balance.amount >= 0)
-                                        "+${String.format("%.2f", balance.amount)}"
+                                        "+₹${String.format("%.2f", balance.amount)}"
                                     else
-                                        "-${String.format("%.2f", -balance.amount)}",
+                                        "-₹${String.format("%.2f", -balance.amount)}",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = if (balance.amount >= 0)
-                                        Color(0xFF4CAF50)
-                                    else
-                                        Color(0xFFF44336),
+                                    color = if (balance.amount >= 0) AccentGreen else AccentPink,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                             if (balance != balances.last()) {
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                Divider(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = TextSecondary.copy(alpha = 0.3f)
+                                )
                             }
                         }
                     }
@@ -780,6 +1040,7 @@ class MainActivity : ComponentActivity() {
                     "Suggested Settlements",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
@@ -787,8 +1048,9 @@ class MainActivity : ComponentActivity() {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF1B5E20)
-                        )
+                            containerColor = AccentGreen.copy(alpha = 0.2f)
+                        ),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -800,19 +1062,20 @@ class MainActivity : ComponentActivity() {
                             Icon(
                                 Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = Color(0xFF4CAF50),
+                                tint = AccentGreen,
                                 modifier = Modifier.size(32.dp)
                             )
                             Text(
                                 "All settled up!",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color(0xFF4CAF50)
+                                color = AccentGreen,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 } else {
                     LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(settlements) { settlement ->
                             SettlementCard(settlement)
@@ -828,8 +1091,9 @@ class MainActivity : ComponentActivity() {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+                containerColor = DarkSurface
+            ),
+            shape = RoundedCornerShape(16.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -840,35 +1104,36 @@ class MainActivity : ComponentActivity() {
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         settlement.from,
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextPrimary
                     )
                     Icon(
                         Icons.Default.ArrowForward,
                         contentDescription = "pays",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = AccentPurple
                     )
                     Text(
                         settlement.to,
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextPrimary
                     )
                 }
                 Text(
-                    "${String.format("%.2f", settlement.amount)}",
+                    "₹${String.format("%.2f", settlement.amount)}",
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = AccentGreen,
                     fontWeight = FontWeight.Bold
                 )
             }
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun FriendsScreen(viewModel: ExpenseViewModel) {
         val friends by viewModel.friends.collectAsState()
@@ -885,36 +1150,19 @@ class MainActivity : ComponentActivity() {
                     "Friends",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
                 if (friends.isEmpty()) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            Icons.Default.People,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "No friends added yet",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = Color.Gray
-                        )
-                        Text(
-                            "Add friends to split expenses",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
-                        )
-                    }
+                    EmptyState(
+                        icon = Icons.Default.People,
+                        title = "No friends added yet",
+                        subtitle = "Add friends to split expenses"
+                    )
                 } else {
                     LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(friends, key = { it.id }) { friend ->
                             FriendCard(
@@ -930,7 +1178,9 @@ class MainActivity : ComponentActivity() {
                 onClick = { showAddDialog = true },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                containerColor = AccentPurple,
+                contentColor = Color.White
             ) {
                 Icon(Icons.Default.PersonAdd, contentDescription = "Add Friend")
             }
@@ -941,17 +1191,24 @@ class MainActivity : ComponentActivity() {
                         showAddDialog = false
                         friendName = ""
                     },
-                    title = { Text("Add Friend") },
+                    title = { Text("Add Friend", color = TextPrimary) },
                     text = {
                         OutlinedTextField(
                             value = friendName,
                             onValueChange = { friendName = it },
                             label = { Text("Name") },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentPurple,
+                                focusedLabelColor = AccentPurple,
+                                cursorColor = AccentPurple,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            )
                         )
                     },
                     confirmButton = {
-                        TextButton(
+                        Button(
                             onClick = {
                                 if (friendName.isNotBlank()) {
                                     viewModel.addFriend(friendName)
@@ -959,7 +1216,10 @@ class MainActivity : ComponentActivity() {
                                     friendName = ""
                                 }
                             },
-                            enabled = friendName.isNotBlank()
+                            enabled = friendName.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AccentPurple
+                            )
                         ) {
                             Text("Add")
                         }
@@ -969,9 +1229,10 @@ class MainActivity : ComponentActivity() {
                             showAddDialog = false
                             friendName = ""
                         }) {
-                            Text("Cancel")
+                            Text("Cancel", color = TextSecondary)
                         }
-                    }
+                    },
+                    containerColor = DarkSurface
                 )
             }
         }
@@ -984,9 +1245,9 @@ class MainActivity : ComponentActivity() {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = DarkSurface
             ),
-            onClick = { showDeleteDialog = true }
+            shape = RoundedCornerShape(16.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -999,16 +1260,29 @@ class MainActivity : ComponentActivity() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(AccentPurple, AccentCyan)
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            friend.name.first().toString().uppercase(),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     Text(
                         friend.name,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
                     )
                 }
 
@@ -1016,7 +1290,7 @@ class MainActivity : ComponentActivity() {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = Color.Gray
+                        tint = AccentPink
                     )
                 }
             }
@@ -1025,21 +1299,22 @@ class MainActivity : ComponentActivity() {
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Remove Friend?") },
-                text = { Text("Are you sure you want to remove ${friend.name}?") },
+                title = { Text("Remove Friend?", color = TextPrimary) },
+                text = { Text("Are you sure you want to remove ${friend.name}?", color = TextSecondary) },
                 confirmButton = {
                     TextButton(onClick = {
                         onDelete()
                         showDeleteDialog = false
                     }) {
-                        Text("Remove", color = Color.Red)
+                        Text("Remove", color = AccentPink)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
+                        Text("Cancel", color = TextSecondary)
                     }
-                }
+                },
+                containerColor = DarkSurface
             )
         }
     }
